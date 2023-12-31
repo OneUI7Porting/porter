@@ -106,11 +106,12 @@ replace_props() {
 
     echo "OLDTEXT: $OLDTEXT"
     echo "NEWTEXT: $NEWTEXT"
-    
-    
 
-    sudo find mounts/vendor_stock mounts/system mounts/odm mounts/product -type f -name "*.prop" -exec sed -i "s|$OLDTEXT|$NEWTEXT|g" {} +
+    if [ "$OLDTEXT" != "$NEWTEXT" ]; then
+        sudo find mounts/vendor_stock mounts/system mounts/odm mounts/product -type f -name "*.prop" -exec sed -i "s|$OLDTEXT|$NEWTEXT|g" {} +
+    fi
 }
+
 
 #check_packages "git" "openjdk-19-jdk" "android-sdk-libsparse-utils" "erofs-utils"
 
@@ -118,7 +119,7 @@ replace_props() {
 #extract_rom "$BASEROMZIP" "stock"
 
 # Extract Ported ROM
-#extract_rom "$PORTROMZIP" "port"
+extract_rom "$PORTROMZIP" "port"
 
 
 
@@ -150,9 +151,9 @@ resize2fs port/system.img 10g 2>/dev/null
 
 # ############ PATCHING PART ######################################
 sudo cp -r patches/fstab.qcom.vendor mounts/vendor_stock/etc/fstab.qcom
-sudo cp -r patches
+sudo cp -r patches/manifest.xml mounts/vendor_stock/etc/vintf/
 
-#exipatch_apk "services.jar" "9645ea3"
+patch_apk "services.jar" "9645ea3"
 
 
 #read target device and port device from build props
@@ -160,16 +161,28 @@ TARGET_DEVICE=$(getprop ro.product.vendor.model vendor)
 TARGET_NAME=$(getprop ro.product.vendor.name vendor)
 PORT_DEVICE=$(getprop ro.product.system.model system)
 PORT_NAME=$(getprop ro.product.system.name system)
+TARGET_QB_ID=$(getprop ro.system.qb.id system_stock)
+PORT_QB_ID=$(getprop ro.system.qb.id system)
+TARGET_FINGEPRINT=$(getprop ro.system.build.fingerprint system_stock)
+PORT_FINGEPRINT=$(getprop ro.system.build.fingerprint system)
+TARGET_INCREMENTAL=$(getprop ro.system.build.version.incremental system_stock)
+PORT_INCREMENTAL=$(getprop ro.system.build.version.incremental system)
+TARGET_DISPLAY_ID=$(getprop ro.build.display.id system_stock)
+PORT_DISPLAY_ID=$(getprop ro.build.display.id system)
+TARGET_DESCRIPTION=$(getorop ro.build.description system_stock)
+PORT_DESCRIPTION=$(getorop ro.build.description system)
+TARGET_CHANGELIST=$(getprop ro.build.changelist system_stock)
+PORT_CHANGELIST=$(getprop ro.build.changelist system)
 
-TARGET_PROPS=($TARGET_DEVICE $TARGET_NAME)
-PORT_PROPS=($PORT_DEVICE $PORT_NAME)
+TARGET_PROPS=($TARGET_DEVICE $TARGET_NAME $TARGET_QB_ID $TARGET_FINGEPRINT $TARGET_INCREMENTAL $TARGET_DISPLAY_ID $TARGET_DESCRIPTION $TARGET_CHANGELIST)
+PORT_PROPS=($PORT_DEVICE $PORT_NAME $PORT_QB_ID $PORT_FINGEPRINT $PORT_INCREMENTAL $PORT_DISPLAY_ID $PORT_DESCRIPTION $PORT_CHANGELIST)
 
 # Check if the arrays have the same length
 if [ ${#TARGET_PROPS[@]} -ne ${#PORT_PROPS[@]} ]; then
     echo "Error: Arrays have different lengths."
     exit 1
 fi
-
+echo "replacing props"
 # Loop over the indices of the arrays
 for ((i = 0; i < ${#TARGET_PROPS[@]}; i++)); do
     replace_props "${TARGET_PROPS[i]}" "${PORT_PROPS[i]}"
