@@ -1,0 +1,21 @@
+ui_print("FuckAlexS1M3XRom OneUI6 for the Galaxy S20FE 5G");
+ui_print("Beta release 2");
+ui_print("By @J0SH1X on xda-developers.com and Deleted user on Telegram");
+ui_print("");
+
+ui_print("Supported device detected detected");
+ui_print("This will take a while. Don't panic.");
+ui_print("formatting cache");
+format("ext4", "EMMC", "/dev/block/by-name/cache", "0", "/cache");
+show_progress(0.500000, 5);
+
+ui_print("Flashing super image");
+package_extract_file("super.img", "/dev/block/by-name/super");
+ui_print("Flashing boot image");
+package_extract_file("boot.img", "/dev/block/by-name/boot");
+show_progress(0.700000, 2);
+ui_print("Expanding partitions");
+run_program("/bin/e2fsck","-f ", "/dev/block/mapper/vendor");
+run_program("/bin/e2fsck","-f ", "/dev/block/by-name/cache");
+show_progress(1.000000, 0);
+ui_print("DONE. Have fun!");
