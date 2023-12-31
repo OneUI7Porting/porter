@@ -74,12 +74,36 @@ extract_rom() {
 
 }
 
+getprop() {
+    local stock_file="mounts/vendor_stock/build.prop"
+    local port_file="mounts/system/system/build.prop"
+    local property=$1
+    local device_type=$2
+    local file_path=""
+
+    # Set file path based on device type
+    if [ "$device_type" == "system" ]; then
+        file_path="$port_file"
+    elif [ "$device_type" == "vendor" ]; then
+        file_path="$stock_file"
+    else
+        echo "Invalid device type: $device_type"
+        return 1
+    fi
+
+    # Get the property value
+    local value=$(sudo grep "$property" "$file_path" | cut -d '=' -f2)
+    echo "$value"
+}
+
 replace_props() {
     local OLDTEXT="$2"
     local NEWTEXT="$1"
 
-    echo "NEWTEXT: $OLDTEXT"
-    echo "OLDTEXT: $NEWTEXT"
+    echo "OLDTEXT: $OLDTEXT"
+    echo "NEWTEXT: $NEWTEXT"
+    
+    
 
     sudo find mounts/vendor_stock mounts/system mounts/odm mounts/product -type f -name "*.prop" -exec sed -i "s|$OLDTEXT|$NEWTEXT|g" {} +
 }
@@ -103,21 +127,22 @@ replace_props() {
 FSTYPE=
 ######################################
 
-e2fsck -f stock/vendor.img
-resize2fs stock/vendor.img 2g
+e2fsck -f stock/vendor.img >/dev/null 2>&1
 
-e2fsck -f port/product.img
-resize2fs port/product.img 2g
+resize2fs stock/vendor.img 2g 2>/dev/null
 
-e2fsck -f port/system.img
-resize2fs port/system.img 10g
+e2fsck -f port/product.img >/dev/null 2>&1
+resize2fs port/product.img 2g 2>/dev/null
 
- sudo mount -o rw port/system.img mounts/system
- sudo mount -o rw port/vendor.img mounts/vendor
- sudo mount -o rw stock/vendor.img mounts/vendor_stock
-  sudo mount -o rw stock/system.img mounts/system_stock
- sudo mount -o rw port/product.img mounts/product
- sudo mount -o rw port/odm.img mounts/odm
+e2fsck -f port/system.img 2>/dev/null
+resize2fs port/system.img 10g 2>/dev/null
+
+ sudo mount -o rw port/system.img mounts/system 2>/dev/null
+ sudo mount -o rw port/vendor.img mounts/vendor 2>/dev/null
+ sudo mount -o rw stock/vendor.img mounts/vendor_stock 2>/dev/null
+  sudo mount -o rw stock/system.img mounts/system_stock 2>/dev/null
+ sudo mount -o rw port/product.img mounts/product 2>/dev/null
+ sudo mount -o rw port/odm.img mounts/odm 2>/dev/null
 
 # ############ PATCHING PART ######################################
 sudo cp -r patches/fstab.qcom.vendor mounts/vendor_stock/etc/fstab.qcom
@@ -126,10 +151,10 @@ sudo cp -r patches/fstab.qcom.vendor mounts/vendor_stock/etc/fstab.qcom
 
 
 #read target device and port device from build props
-TARGET_DEVICE=$(sudo grep ro.product.vendor.model mounts/vendor_stock/build.prop | cut -d '=' -f2)
-TARGET_NAME=$(sudo grep ro.product.vendor.name mounts/vendor_stock/build.prop | cut -d '=' -f2)
-PORT_DEVICE=$(sudo grep ro.product.system.model mounts/system/system/build.prop | cut -d '=' -f2)
-PORT_NAME=$(sudo grep ro.product.system.name mounts/system/system/build.prop | cut -d '=' -f2)
+TARGET_DEVICE=$(getprop ro.product.vendor.model vendor)
+TARGET_NAME=$(getprop ro.product.vendor.name vendor)
+PORT_DEVICE=$(getprop ro.product.system.model system)
+PORT_NAME=$(getprop ro.product.system.name system)
 
 TARGET_PROPS=($TARGET_DEVICE $TARGET_NAME)
 PORT_PROPS=($PORT_DEVICE $PORT_NAME)
