@@ -77,15 +77,17 @@ extract_rom() {
 getprop() {
     local stock_file="mounts/vendor_stock/build.prop"
     local port_file="mounts/system/system/build.prop"
+    local system_stock_file="mounts/system_stock/system/build.prop"
     local property=$1
     local device_type=$2
     local file_path=""
 
-    # Set file path based on device type
     if [ "$device_type" == "system" ]; then
         file_path="$port_file"
     elif [ "$device_type" == "vendor" ]; then
         file_path="$stock_file"
+    elif [ "$device_type" == "system_stock" ]; then
+        file_path="$system_stock_file"
     else
         echo "Invalid device type: $device_type"
         return 1
@@ -93,6 +95,8 @@ getprop() {
 
     # Get the property value
     local value=$(sudo grep "$property" "$file_path" | cut -d '=' -f2)
+    
+    # Return the value
     echo "$value"
 }
 
@@ -146,6 +150,7 @@ resize2fs port/system.img 10g 2>/dev/null
 
 # ############ PATCHING PART ######################################
 sudo cp -r patches/fstab.qcom.vendor mounts/vendor_stock/etc/fstab.qcom
+sudo cp -r patches
 
 #exipatch_apk "services.jar" "9645ea3"
 
