@@ -5,209 +5,118 @@ export PATH=$(pwd)/bin:$(pwd)/bin/apktool:$PATH
 
 BASEROMZIP=$1
 PORTROMZIP=$2
-VERSION=$3
-UPSTREAMURL="https://github.com/OneUI-S20Fe/"
+UI7UPDATEZIP=$3
+VERSION=$4
+UPSTREAMURL="https://github.com/OneUI-S23/"
 
-# Function to check if a package is installed
-check_packages() {
-    for pkg in "$@"; do
-        if dpkg -l "$pkg" 2>/dev/null | grep -q '^ii'; then
-            echo "Package $pkg is installed."
-        else
-            echo "Package $pkg is not installed. Installing $pkg."
-            sudo apt update
-            sudo apt install "$pkg"
-        fi
-    done
-}
+source bin/functions.sh
 
-
-
-#Function to hopefully auto patch apks
-
-patch_apk() {
-    local APKNAME=$1
-    local EXTENSION="${APKNAME##*.}"
-    local APK_NAME_NO_EXT="${APKNAME%.*}"
-    local REPO="${UPSTREAMURL}${APK_NAME_NO_EXT}.${EXTENSION}.git"
-    local COMMITHASH=$2
-    local LOCALPATH=$(sudo find mounts -type f -iname $APKNAME -printf "%h\n")
-    local FULL_PATH="$LOCALPATH/$APKNAME"
-    mkdir workingdir
-    echo $REPO
-    cp $FULL_PATH workingdir/
-    cd workingdir
-    java -jar ../bin/apktool/apktool.jar d $APKNAME
-    cd "${APKNAME}.out"
-    git init
-    git add *
-    git commit -m "initial dummy commit" > /dev/null 2>&1
-    git fetch $REPO master
-    git cherry-pick -X theirs $COMMITHASH
-
-    java -jar ../../bin/apktool/apktool.jar b
-    sudo cp dist/$APKNAME ../../${FULL_PATH}
-    cd ../../
-    rm -rf workingdir
-}
-
-# Function to extract ROM
-extract_rom() {
-    local ROMZIP=$1
-    local DEST_DIR=$2
-
-
-    local UNPACK_DIR="unpack"
-    mkdir -p unpack/ap
-    unzip -j "$ROMZIP" "*AP*tar.md5" -d "$UNPACK_DIR"
-    mv unpack/AP*.tar.md5 unpack/AP.tar
-    tar -xvf $UNPACK_DIR/AP.tar --directory="unpack/ap" --wildcards 'super.img.lz4'
-    rm -rf "unpack/AP.tar"
-    cd unpack/ap
-    lz4 -d super.img.lz4
-    simg2img super.img super.raw
-    rm -rf super.img
-    lpunpack super.raw
-    cd -
-    mv "unpack"/ap/*.img "$DEST_DIR"
-    rm -rf unpack
-
-}
-
-getprop() {
-    local stock_file="mounts/vendor_stock/build.prop"
-    local port_file="mounts/system/system/build.prop"
-    local system_stock_file="mounts/system_stock/system/build.prop"
-    local property=$1
-    local device_type=$2
-    local file_path=""
-
-    if [ "$device_type" == "system" ]; then
-        file_path="$port_file"
-    elif [ "$device_type" == "vendor" ]; then
-        file_path="$stock_file"
-    elif [ "$device_type" == "system_stock" ]; then
-        file_path="$system_stock_file"
-    else
-        echo "Invalid device type: $device_type"
-        return 1
+    if [[ -z "$1" ]]; then
+        echo "Usage: gen.sh DeviceFirmwareFile S24OneUI6.1Firmware S24OneUi7UpdateFile RomVersion"
+        exit
     fi
 
-    # Get the property value
-    local value=$(sudo grep "$property" "$file_path" | cut -d '=' -f2)
-    
-    # Return the value
-    echo "$value"
-}
-
-replace_props() {
-    local OLDTEXT="$2"
-    local NEWTEXT="$1"
-
-    echo "OLDTEXT: $OLDTEXT"
-    echo "NEWTEXT: $NEWTEXT"
-
-    if [ "$OLDTEXT" != "$NEWTEXT" ]; then
-        sudo find mounts/vendor_stock mounts/system mounts/odm mounts/product -type f -name "*.prop" -exec sed -i "s|$OLDTEXT|$NEWTEXT|g" {} +
-    fi
-}
+check_packages "git" "android-sdk-libsparse-utils" "erofs-utils" "xmlstarlet"
 
 
-#check_packages "git" "openjdk-19-jdk" "android-sdk-libsparse-utils" "erofs-utils"
-
+# ####################### MOUNTING PART ##########################
 # Extract Base ROM
 #extract_rom "$BASEROMZIP" "stock"
 
-# Extract Ported ROM
-extract_rom "$PORTROMZIP" "port"
+# Extract Port ROM
+# extract_rom "$PORTROMZIP" "port"
+
+# # Extract OneUI7 Update
+# unpack_updatezip "ui7update"
+
+# # Update OneUI6 to 7
+# updateImage "system" "ui7update" "port"
+# updateImage "system_ext" "ui7update" "port"
+# updateImage "product" "ui7update" "port"
+# updateImage "odm" "ui7update" "port"
+# updateImage "vendor" "ui7update" "port"
+
+#extract port rom and mount base rom
+#extract_erofs_images "port"
+extract_erofs_images "stock" "vendor.img"
+
+#mount_images "stock"
+
+###################################### SYSTEM PATCHING PART ######################################
+#VNDK_VERSION=$(getprop ro.vndk.version vendor)
+#replace_selinux "port"
+#apply_partition_patches "port"
+#replace_in_file "port/system" "floating_feature.xml" "Galaxy S24 Ultra" "Galaxy S23"
+
+#add_line_in_file "port/system" "floating_feature.xml" "<SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS>TRUE</SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS>"
+
+#copy_file_to_same_path "stock/system_ext" "com.android.vndk.v$VNDK_VERSION.apex" "port/system_ext"
 
 
 
 
-####################### MOUNTING PART ##########################
+###################################### VENDOR PATCHING PART ######################################
+
+rm -rf stock/vendor/lib/*.so stock/vendor/lib/hw stock/vendor/lib/camera stock/vendor/lib/mediadrm stock/vendor/lib/mediacas stock/vendor/lib/rfsa stock/vendor/lib/soundfx stock/vendor/lib/egl stock/vendor/lib/vndk
+
+replace_in_file "stock/vendor" "build.prop" "ro.vendor.product.cpu.abilist=arm64-v8a,armeabi-v7a,armeabi" "ro.vendor.product.cpu.abilist=arm64-v8a"
+replace_in_file "stock/vendor" "build.prop" "ro.vendor.product.cpu.abilist32=armeabi-v7a,armeabi" "ro.vendor.product.cpu.abilist32="
+replace_in_file "stock/vendor" "build.prop" "ro.bionic.2nd_arch=arm" "ro.bionic.2nd_arch="
+replace_in_file "stock/vendor" "build.prop" "ro.bionic.2nd_cpu_variant=cortex-a75" "ro.bionic.2nd_cpu_variant="
+replace_in_file "stock/vendor" "build.prop" "ro.zygote=zygote64_32" "ro.zygote=zygote64"
+
+remove_line_from_file "stock/vendor" "build.prop" "dalvik.vm.isa.arm.variant=cortex-a75"
+remove_line_from_file "stock/vendor" "build.prop" "dalvik.vm.isa.arm.features=default"
+files_to_remove=("recovery-from-boot.p" "vendor.samsung.hardware.tlc.iccc@1.0" "vendor.samsung.hardware.tlc.kg" "vaultkeeperd" "vaultkeeper_common" "vendor.samsung.hardware.security.proca@2.0" "vendor.samsung.hardware.security.sem@1.0" "vendor.samsung.hardware.security.hdcp.keyprovisioning@1.0" "android.hardware.cas@1.2" "android.hardware.media.omx@1.0" "android.hardware.camera.provider@2.7-external" "cass")
+delete_32bit_elf_files "stock/vendor"
+remove_files_by_name "stock/vendor" "${files_to_remove[@]}"
+apply_partition_patches "stock" "vendor"
+remove_xml_hal_entry "stock/vendor/etc/vintf/manifest_kalama.xml"
+
+###################################### VENDOR BOOT PATCHING PART ######################################
 
 
-#####################################
-#detect fs type here
-FSTYPE=
-######################################
-
-e2fsck -f stock/vendor.img >/dev/null 2>&1
-
-resize2fs stock/vendor.img 2g 2>/dev/null
-
-e2fsck -f port/product.img >/dev/null 2>&1
-resize2fs port/product.img 2g 2>/dev/null
-
-e2fsck -f port/system.img 2>/dev/null
-resize2fs port/system.img 10g 2>/dev/null
-
- sudo mount -o rw port/system.img mounts/system 2>/dev/null
- sudo mount -o rw port/vendor.img mounts/vendor 2>/dev/null
- sudo mount -o rw stock/vendor.img mounts/vendor_stock 2>/dev/null
-  sudo mount -o rw stock/system.img mounts/system_stock 2>/dev/null
- sudo mount -o rw port/product.img mounts/product 2>/dev/null
- sudo mount -o rw port/odm.img mounts/odm 2>/dev/null
-
-# ############ PATCHING PART ######################################
-sudo cp -r patches/fstab.qcom.vendor mounts/vendor_stock/etc/fstab.qcom
-sudo cp -r patches/manifest.xml mounts/vendor_stock/etc/vintf/
-
-patch_apk "services.jar" "9645ea3"
 
 
-#read target device and port device from build props
-TARGET_DEVICE=$(getprop ro.product.vendor.model vendor)
-TARGET_NAME=$(getprop ro.product.vendor.name vendor)
-PORT_DEVICE=$(getprop ro.product.system.model system)
-PORT_NAME=$(getprop ro.product.system.name system)
-TARGET_QB_ID=$(getprop ro.system.qb.id system_stock)
-PORT_QB_ID=$(getprop ro.system.qb.id system)
-TARGET_FINGEPRINT=$(getprop ro.system.build.fingerprint system_stock)
-PORT_FINGEPRINT=$(getprop ro.system.build.fingerprint system)
-TARGET_INCREMENTAL=$(getprop ro.system.build.version.incremental system_stock)
-PORT_INCREMENTAL=$(getprop ro.system.build.version.incremental system)
-TARGET_DISPLAY_ID=$(getprop ro.build.display.id system_stock)
-PORT_DISPLAY_ID=$(getprop ro.build.display.id system)
-TARGET_DESCRIPTION=$(getorop ro.build.description system_stock)
-PORT_DESCRIPTION=$(getorop ro.build.description system)
-TARGET_CHANGELIST=$(getprop ro.build.changelist system_stock)
-PORT_CHANGELIST=$(getprop ro.build.changelist system)
+# #read target device and port device from build props
+# TARGET_DEVICE=$(getprop ro.product.vendor.model vendor)
+# TARGET_NAME=$(getprop ro.product.vendor.name vendor)
+# PORT_DEVICE=$(getprop ro.product.system.model system)
+# PORT_NAME=$(getprop ro.product.system.name system)
+# TARGET_QB_ID=$(getprop ro.system.qb.id system_stock)
+# PORT_QB_ID=$(getprop ro.system.qb.id system)
+# TARGET_FINGEPRINT=$(getprop ro.system.build.fingerprint system_stock)
+# PORT_FINGEPRINT=$(getprop ro.system.build.fingerprint system)
+# TARGET_INCREMENTAL=$(getprop ro.system.build.version.incremental system_stock)
+# PORT_INCREMENTAL=$(getprop ro.system.build.version.incremental system)
+# TARGET_DISPLAY_ID=$(getprop ro.build.display.id system_stock)
+# PORT_DISPLAY_ID=$(getprop ro.build.display.id system)
+# TARGET_DESCRIPTION=$(getorop ro.build.description system_stock)
+# PORT_DESCRIPTION=$(getorop ro.build.description system)
+# TARGET_CHANGELIST=$(getprop ro.build.changelist system_stock)
+# PORT_CHANGELIST=$(getprop ro.build.changelist system)
+# VNDK_VERSION=$(getprop ro.vndk.version vendor)
 
-TARGET_PROPS=($TARGET_DEVICE $TARGET_NAME $TARGET_QB_ID $TARGET_FINGEPRINT $TARGET_INCREMENTAL $TARGET_DISPLAY_ID $TARGET_DESCRIPTION $TARGET_CHANGELIST)
-PORT_PROPS=($PORT_DEVICE $PORT_NAME $PORT_QB_ID $PORT_FINGEPRINT $PORT_INCREMENTAL $PORT_DISPLAY_ID $PORT_DESCRIPTION $PORT_CHANGELIST)
+# TARGET_PROPS=($TARGET_DEVICE $TARGET_NAME $TARGET_QB_ID $TARGET_FINGEPRINT $TARGET_INCREMENTAL $TARGET_DISPLAY_ID $TARGET_DESCRIPTION $TARGET_CHANGELIST)
+# PORT_PROPS=($PORT_DEVICE $PORT_NAME $PORT_QB_ID $PORT_FINGEPRINT $PORT_INCREMENTAL $PORT_DISPLAY_ID $PORT_DESCRIPTION $PORT_CHANGELIST)
 
-# Check if the arrays have the same length
-if [ ${#TARGET_PROPS[@]} -ne ${#PORT_PROPS[@]} ]; then
-    echo "Error: Arrays have different lengths."
-    exit 1
-fi
-echo "replacing props"
-# Loop over the indices of the arrays
-for ((i = 0; i < ${#TARGET_PROPS[@]}; i++)); do
-    replace_props "${TARGET_PROPS[i]}" "${PORT_PROPS[i]}"
-done
-
-#check for vndk30
-FILE_TO_CHECK=mounts/system/system/system_ext/apex/com.android.vndk.v30.apex
-    # Check if the file exists
-    if [ -e "$FILE_TO_CHECK" ]; then
-    true
-    else
-        echo "Error: File $FILE_TO_CHECK not found."
-        # Add your logic here for when the file doesn't exist
-       # mount stock system and copy file
-      sudo cp mounts/system_stock/system/system_ext/apex/com.android.vndk.v30.apex $FILE_TO_CHECK
-    fi
-
-sudo rm -rf mounts/system/system/system_ext/etc/selinux
+# # Check if the arrays have the same length
+# if [ ${#TARGET_PROPS[@]} -ne ${#PORT_PROPS[@]} ]; then
+#     echo "Error: Arrays have different lengths."
+#     exit 1
+# fi
+# echo "replacing props"
+# # Loop over the indices of the arrays
+# for ((i = 0; i < ${#TARGET_PROPS[@]}; i++)); do
+#     replace_props "${TARGET_PROPS[i]}" "${PORT_PROPS[i]}"
+# done
 
 # ########## CREATE EROFS IMAGES ################
-# sudo mkfs.erofs -zlz4hc --file-contexts=mounts/system/system/etc/selinux/plat_file_contexts --ignore-mtime system.img mounts/system/
-# sudo mkfs.erofs -zlz4hc --ignore-mtime product.img mounts/product/
-# sudo mkfs.erofs -zlz4hc --file-contexts=mounts/vendor/etc/selinux/vendor_file_contexts --ignore-mtime vendor.img mounts/vendor/
-# sudo mkfs.erofs -zlz4hc --ignore-mtime odm.img mounts/odm/
-
+# mkfs.erofs -zlz4hc --file-contexts=port/system/system/etc/selinux/plat_file_contexts --ignore-mtime ./out/system.img port/system/
+# mkfs.erofs -zlz4hc --file-contexts=port/system_ext/etc/selinux/system_ext_file_contexts --ignore-mtime ./out/system_ext.img port/system_ext/
+mkfs.erofs -zlz4hc --file-contexts=stock/vendor/etc/selinux/vendor_file_contexts --ignore-mtime ./out/vendor.img stock/vendor/
+# mkfs.erofs -zlz4hc --file-contexts=port/product/etc/selinux/product_file_contexts --ignore-mtime ../out/product.img port/product/
+# mkfs.erofs -zlz4hc --file-contexts=port/odm/etc/selinux/odm_file_contexts --ignore-mtime ./out/odm.img port/odm/
 
 # ######### CREATE SUPER IMAGE ##################
 # lpmake --metadata-size 65536\
@@ -234,10 +143,7 @@ sudo rm -rf mounts/system/system/system_ext/etc/selinux
 # zip -r ../SealRom-R8Q-$VERSION.zip *
 # cd ..
 #  ################# CLEANUP AND UNMOUNT #######################
- #sudo umount -f mounts/system
- #sudo umount -f mounts/vendor
- #sudo umount -f mounts/product
- #sudo umount -f mounts/odm
+
 
 # rm -rf port/*
  #rm -rf stock/*
@@ -246,7 +152,7 @@ sudo rm -rf mounts/system/system/system_ext/etc/selinux
 # rm -rf product.img
 # rm -rf vendor.img
 # rm -rf odm.img
-rm -rf unpack
+#rm -rf unpack
 # rm -rf updatezip/*.img
 
 
