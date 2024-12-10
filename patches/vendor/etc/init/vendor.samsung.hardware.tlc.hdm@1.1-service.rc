@@ -1,0 +1,47 @@
+service hdmtlc-hal-service /vendor/bin/hw/vendor.samsung.hardware.tlc.hdm@1.1-service
+    interface vendor.samsung.hardware.tlc.hdm@1.0::ISehHdm default
+    interface vendor.samsung.hardware.tlc.hdm@1.1::ISehHdm default
+    class hal
+    user system
+    group system
+    oneshot
+    disabled
+
+on post-fs-data
+    chown system system /sys/class/sec/hdm/hdm_policy
+    chmod 0660 /sys/class/sec/hdm/hdm_policy
+    mkdir /data/vendor/tz_hdm 0770 system system
+    mkdir /mnt/vendor/efs/HDM 0770 system system
+    chown system system /sys/kernel/hdm_wlan_loader
+    chmod 0660 /sys/kernel/hdm_wlan_loader
+
+service hdm_status_sh /vendor/bin/sh /vendor/bin/hdm_status.sh ${ro.boot.hdm_status}
+    user system
+    group system
+    disabled
+    oneshot
+
+on property:ro.boot.hdm_status=*
+    start hdm_status_sh
+
+on property:vendor.hdm.internal.dis=start
+    stop vendor.nfc_hal_service
+
+on property:vendor.hdm.internal.usb=start
+    start adbd
+
+on property:vendor.hdm.internal.usb=stop
+    stop adbd
+
+on property:vendor.hdm.internal.wlan=start
+    start wificond
+
+on property:vendor.hdm.internal.wlan=stop
+    stop wificond
+
+on property:vendor.hdm.internal.bt=boot
+    stop vendor.bluetooth-1-1-qti
+
+on property:vendor.hdm.internal.bt=start
+    start vendor.bluetooth-1-1-qti
+

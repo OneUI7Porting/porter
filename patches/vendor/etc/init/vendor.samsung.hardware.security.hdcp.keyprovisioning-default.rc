@@ -1,0 +1,7 @@
+service HdcpKeyProvisioning-hal /vendor/bin/hw/vendor.samsung.hardware.security.hdcp.keyprovisioning-service
+    interface aidl vendor.samsung.hardware.security.hdcp.keyprovisioning.ISehHdcpKeyProvisioning/default
+    oneshot
+    disabled
+    class hal
+    user system
+    group system

@@ -1,0 +1,10 @@
+service kgtaserv /vendor/bin/hw/vendor.samsung.hardware.tlc.kg-service
+    interface aidl vendor.samsung.hardware.tlc.kg.ISehKg/default
+    class hal
+    user system
+    group system
+    # would also cause the hal to start early during boot if oneshot wasn't set
+    # will not be restarted if it exits until it is requested to be restarted
+    oneshot
+    # will only be started when requested
+    disabled

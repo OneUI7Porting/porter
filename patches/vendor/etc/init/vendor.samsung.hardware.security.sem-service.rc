@@ -1,0 +1,7 @@
+service sem_aidl /vendor/bin/hw/vendor.samsung.hardware.security.sem-service
+    interface aidl vendor.samsung.hardware.security.sem.ISehSem/default
+    class hal
+    user system
+    group system
+    oneshot
+    disabled
