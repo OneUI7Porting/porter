@@ -17,6 +17,10 @@ source bin/functions.sh
     fi
 
 check_packages "git" "android-sdk-libsparse-utils" "erofs-utils" "xmlstarlet"
+mkdir -p port
+mkdir -p stock
+mkdir -p ui7update
+
 
 
 # ####################### MOUNTING PART ##########################
