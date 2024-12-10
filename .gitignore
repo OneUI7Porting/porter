@@ -4,3 +4,7 @@ stock/*
 *.zip
 *test*
 unpack
+ui7update
+*.bin
+*.txt
+manifest*
