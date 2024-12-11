@@ -7,7 +7,6 @@ BASEROMZIP=$1
 PORTROMZIP=$2
 UI7UPDATEZIP=$3
 VERSION=$4
-UPSTREAMURL="https://github.com/OneUI-S23/"
 
 source bin/functions.sh
 
@@ -41,8 +40,8 @@ mkdir -p ui7update
 # updateImage "vendor" "ui7update" "port"
 
 #extract port rom and mount base rom
-#extract_erofs_images "port"
-extract_erofs_images "stock" "vendor.img"
+#extract_erofs_images "port" "system.img"
+#extract_erofs_images "stock" "vendor.img"
 
 #mount_images "stock"
 
@@ -55,27 +54,28 @@ extract_erofs_images "stock" "vendor.img"
 #add_line_in_file "port/system" "floating_feature.xml" "<SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS>TRUE</SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS>"
 
 #copy_file_to_same_path "stock/system_ext" "com.android.vndk.v$VNDK_VERSION.apex" "port/system_ext"
-
+services_jar_patch_commit_hashes=("8362959" "bc64040")
+patch_apk "services.jar" "${services_jar_patch_commit_hashes[@]}"
 
 
 
 ###################################### VENDOR PATCHING PART ######################################
 
-rm -rf stock/vendor/lib/*.so stock/vendor/lib/hw stock/vendor/lib/camera stock/vendor/lib/mediadrm stock/vendor/lib/mediacas stock/vendor/lib/rfsa stock/vendor/lib/soundfx stock/vendor/lib/egl stock/vendor/lib/vndk
+# rm -rf stock/vendor/lib/*.so stock/vendor/lib/hw stock/vendor/lib/camera stock/vendor/lib/mediadrm stock/vendor/lib/mediacas stock/vendor/lib/rfsa stock/vendor/lib/soundfx stock/vendor/lib/egl stock/vendor/lib/vndk
 
-replace_in_file "stock/vendor" "build.prop" "ro.vendor.product.cpu.abilist=arm64-v8a,armeabi-v7a,armeabi" "ro.vendor.product.cpu.abilist=arm64-v8a"
-replace_in_file "stock/vendor" "build.prop" "ro.vendor.product.cpu.abilist32=armeabi-v7a,armeabi" "ro.vendor.product.cpu.abilist32="
-replace_in_file "stock/vendor" "build.prop" "ro.bionic.2nd_arch=arm" "ro.bionic.2nd_arch="
-replace_in_file "stock/vendor" "build.prop" "ro.bionic.2nd_cpu_variant=cortex-a75" "ro.bionic.2nd_cpu_variant="
-replace_in_file "stock/vendor" "build.prop" "ro.zygote=zygote64_32" "ro.zygote=zygote64"
+# replace_in_file "stock/vendor" "build.prop" "ro.vendor.product.cpu.abilist=arm64-v8a,armeabi-v7a,armeabi" "ro.vendor.product.cpu.abilist=arm64-v8a"
+# replace_in_file "stock/vendor" "build.prop" "ro.vendor.product.cpu.abilist32=armeabi-v7a,armeabi" "ro.vendor.product.cpu.abilist32="
+# replace_in_file "stock/vendor" "build.prop" "ro.bionic.2nd_arch=arm" "ro.bionic.2nd_arch="
+# replace_in_file "stock/vendor" "build.prop" "ro.bionic.2nd_cpu_variant=cortex-a75" "ro.bionic.2nd_cpu_variant="
+# replace_in_file "stock/vendor" "build.prop" "ro.zygote=zygote64_32" "ro.zygote=zygote64"
 
-remove_line_from_file "stock/vendor" "build.prop" "dalvik.vm.isa.arm.variant=cortex-a75"
-remove_line_from_file "stock/vendor" "build.prop" "dalvik.vm.isa.arm.features=default"
-files_to_remove=("recovery-from-boot.p" "vendor.samsung.hardware.tlc.iccc@1.0" "vendor.samsung.hardware.tlc.kg" "vaultkeeperd" "vaultkeeper_common" "vendor.samsung.hardware.security.proca@2.0" "vendor.samsung.hardware.security.sem@1.0" "vendor.samsung.hardware.security.hdcp.keyprovisioning@1.0" "android.hardware.cas@1.2" "android.hardware.media.omx@1.0" "android.hardware.camera.provider@2.7-external" "cass")
-delete_32bit_elf_files "stock/vendor"
-remove_files_by_name "stock/vendor" "${files_to_remove[@]}"
-apply_partition_patches "stock" "vendor"
-remove_xml_hal_entry "stock/vendor/etc/vintf/manifest_kalama.xml"
+# remove_line_from_file "stock/vendor" "build.prop" "dalvik.vm.isa.arm.variant=cortex-a75"
+# remove_line_from_file "stock/vendor" "build.prop" "dalvik.vm.isa.arm.features=default"
+# files_to_remove=("recovery-from-boot.p" "vendor.samsung.hardware.tlc.iccc@1.0" "vendor.samsung.hardware.tlc.kg" "vaultkeeperd" "vaultkeeper_common" "vendor.samsung.hardware.security.proca@2.0" "vendor.samsung.hardware.security.sem@1.0" "vendor.samsung.hardware.security.hdcp.keyprovisioning@1.0" "android.hardware.cas@1.2" "android.hardware.media.omx@1.0" "android.hardware.camera.provider@2.7-external" "cass")
+# delete_32bit_elf_files "stock/vendor"
+# remove_files_by_name "stock/vendor" "${files_to_remove[@]}"
+# apply_partition_patches "stock" "vendor"
+# remove_xml_hal_entry "stock/vendor/etc/vintf/manifest_kalama.xml"
 
 ###################################### VENDOR BOOT PATCHING PART ######################################
 
@@ -118,7 +118,7 @@ remove_xml_hal_entry "stock/vendor/etc/vintf/manifest_kalama.xml"
 # ########## CREATE EROFS IMAGES ################
 # mkfs.erofs -zlz4hc --file-contexts=port/system/system/etc/selinux/plat_file_contexts --ignore-mtime ./out/system.img port/system/
 # mkfs.erofs -zlz4hc --file-contexts=port/system_ext/etc/selinux/system_ext_file_contexts --ignore-mtime ./out/system_ext.img port/system_ext/
-mkfs.erofs -zlz4hc --file-contexts=stock/vendor/etc/selinux/vendor_file_contexts --ignore-mtime ./out/vendor.img stock/vendor/
+#mkfs.erofs -zlz4hc --file-contexts=stock/vendor/etc/selinux/vendor_file_contexts --ignore-mtime ./out/vendor.img stock/vendor/
 # mkfs.erofs -zlz4hc --file-contexts=port/product/etc/selinux/product_file_contexts --ignore-mtime ../out/product.img port/product/
 # mkfs.erofs -zlz4hc --file-contexts=port/odm/etc/selinux/odm_file_contexts --ignore-mtime ./out/odm.img port/odm/
 
