@@ -84,7 +84,7 @@ patch_apk() {
     fi
 
     # Uncomment the following lines to copy the rebuilt APK back to the original location
-    # sudo cp "dist/$APKNAME" "$FULL_PATH"
+    cp "dist/$APKNAME" "$FULL_PATH"
 
     cd ../../
 
@@ -194,16 +194,26 @@ getprop() {
 }
 
 replace_props() {
-    local OLDTEXT="$2"
-    local NEWTEXT="$1"
+    local PROP="$1"
+    local NEW_DIRECTORY="$2"
+    local DIRECTORY="$3"
 
-    echo "OLDTEXT: $OLDTEXT"
-    echo "NEWTEXT: $NEWTEXT"
+    echo "Searching for new value for property: $PROP in $NEW_DIRECTORY"
 
-    if [ "$OLDTEXT" != "$NEWTEXT" ]; then
-        sudo find port -type f -name "*.prop" -exec sed -i "s|$OLDTEXT|$NEWTEXT|g" {} +
+    local NEW_VALUE=$(grep --exclude=*.img -r "^$PROP=" "$NEW_DIRECTORY" | head -n 1 | cut -d'=' -f2)
+
+    if [[ -z "$NEW_VALUE" ]]; then
+        echo "Error: New value for $PROP not found in $NEW_DIRECTORY"
+        return 1
     fi
+
+    echo "Replacing $PROP with new value: $NEW_VALUE in $DIRECTORY"
+
+    find "$DIRECTORY" -type f -name "*.prop" -exec sed -i "s|^$PROP=.*|$PROP=$NEW_VALUE|g" {} +
+
+    echo "Property $PROP updated successfully in $DIRECTORY."
 }
+
 
 unpack_updatezip() {
     if [[ -z "$1" ]]; then
@@ -723,19 +733,91 @@ append_file_contexts() {
     fi
 }
 
+set_device_model() {
+    local FILENAME=$1
+    local TARGETFILE=$2
+    local DIRECTORY=$3
+    local MODEL_NAME=$(ls "$FILENAME" | cut -d '_' -f 1)
 
+    case "$MODEL_NAME" in
+        "SM-S911B")
+            MODEL="Galaxy S23"
+            ;;
+        "SM-S916B")
+            MODEL="Galaxy S23+"
+            ;;
+        "SM-S918B")
+            MODEL="Galaxy S23 Ultra"
+            ;;
+        *)
+            echo "Error: Unknown model $MODEL_NAME"
+            return 1
+            ;;
+    esac
 
+    replace_in_file "$DIRECTORY" "$TARGETFILE" "Galaxy S24 Ultra" "$MODEL"
+}
 
+patch_vendor_cmdline() {
+    local boot_img="$1"
+    local output_dir="$2"
+    local repacked_img="$3"
+    local cmdline_entries=("${!4}")  # Accept an array of cmdline entries
+    local log_file="$output_dir/unpack.log"
 
+    # Ensure arguments are provided
+    if [[ -z "$boot_img" || -z "$output_dir" || -z "$repacked_img" || ${#cmdline_entries[@]} -eq 0 ]]; then
+        echo "Usage: repack_vendor_boot <boot_img> <output_dir> <repacked_img> <cmdline_entries_array>"
+        return 1
+    fi
 
+    # Create output directory if it doesn't exist
+    mkdir -p "$output_dir"
 
+    # Unpack the boot image and save the log
+    ./bin/mkbootimg/unpack_bootimg.py --boot_img "$boot_img" --out "$output_dir" > "$log_file" || return 1
 
+    # Extract the original vendor_cmdline
+    local original_cmdline
+    original_cmdline=$(grep "vendor command line args:" "$log_file" | cut -d':' -f2- | xargs)
 
+    # Append entries from the cmdline_entries array
+    local new_cmdline="$original_cmdline"
+    # for cmdline_entry in "${cmdline_entries[@]}"; do
+        new_cmdline="$new_cmdline androidboot.selinux=permissive"
+    # done
 
+    # Extract values from the unpack.log
+    local dtb_offset
+    local ramdisk_offset
+    local tags_offset
+    local kernel_offset
+    local page_size
+    local header_version
 
+    dtb_offset=$(grep "dtb address:" "$log_file" | cut -d ':' -f2)
+    ramdisk_offset=$(grep "ramdisk load address:" "$log_file" | cut -d ':' -f2)
+    tags_offset=$(grep "kernel tags load address:" "$log_file" |cut -d ':' -f2)
+    kernel_offset=$(grep "kernel load address:" "$log_file" |cut -d ':' -f2)
+    page_size=$(grep "page size:" "$log_file" |cut -d ':' -f2)
+    header_version=$(grep "vendor boot image header version:" "$log_file" |cut -d ':' -f2)
+    echo $ramdisk_offset
 
+    # Repack the boot image with the modified cmdline
+    ./bin/mkbootimg/mkbootimg.py \
+        --dtb "$output_dir/dtb" \
+        --vendor_ramdisk "$output_dir/vendor_ramdisk00" \
+        --vendor_cmdline "$new_cmdline" \
+        --dtb_offset "$dtb_offset" \
+        --ramdisk_offset "$ramdisk_offset" \
+        --tags_offset "$tags_offset" \
+        --kernel_offset "$kernel_offset" \
+        --header_version "$header_version" \
+        --pagesize "$page_size" \
+        --base 0x00000000 \
+        --vendor_bootconfig "$output_dir/bootconfig" \
+        --vendor_boot "$repacked_img" || return 1
 
-
-
-
-
+    echo "Repacked image saved to $repacked_img"
+    return 0
+}
