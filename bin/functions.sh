@@ -13,34 +13,82 @@ check_packages() {
     done
 }
 
-
+UPSTREAMURL="https://github.com/OneUI7Porting/"
 
 #Function to hopefully auto patch apks
 
 patch_apk() {
     local APKNAME=$1
+    shift
+    local COMMIT_HASHES=($@)
+
+    if [[ -z "$APKNAME" || ${#COMMIT_HASHES[@]} -eq 0 ]]; then
+        echo "Usage: patch_apk <APKNAME> <COMMIT_HASH_1> [<COMMIT_HASH_2> ...]"
+        return 1
+    fi
+
     local EXTENSION="${APKNAME##*.}"
     local APK_NAME_NO_EXT="${APKNAME%.*}"
     local REPO="${UPSTREAMURL}${APK_NAME_NO_EXT}.${EXTENSION}.git"
-    local COMMITHASH=$2
-    local LOCALPATH=$(sudo find mounts -type f -iname $APKNAME -printf "%h\n")
-    local FULL_PATH="$LOCALPATH/$APKNAME"
-    mkdir workingdir
-    echo $REPO
-    cp $FULL_PATH workingdir/
-    cd workingdir
-    java -jar ../bin/apktool/apktool.jar d $APKNAME
-    cd "${APKNAME}.out"
-    git init
-    git add *
-    git commit -m "initial dummy commit" > /dev/null 2>&1
-    git fetch $REPO master
-    git cherry-pick -X theirs $COMMITHASH
 
-    java -jar ../../bin/apktool/apktool.jar b
-    sudo cp dist/$APKNAME ../../${FULL_PATH}
+    # Find the local path of the APK
+    local LOCALPATH=$(sudo find port -type f -iname "$APKNAME" -printf "%h\n")
+    if [[ -z "$LOCALPATH" ]]; then
+        echo "Error: APK not found in 'port' directory"
+        return 1
+    fi
+
+    local FULL_PATH="$LOCALPATH/$APKNAME"
+
+    # Create a working directory
+    mkdir -p workingdir
+
+    echo "Cloning repository: $REPO"
+    cp "$FULL_PATH" workingdir/
+
+    cd workingdir || return 1
+
+    # Decompile the APK
+    if ! java -jar ../bin/apktool/apktool_2.10.0.jar d "$APKNAME"; then
+        echo "Error: Failed to decompile APK"
+        cd ..
+        return 1
+    fi
+
+    cd "${APKNAME}.out" || return 1
+
+    # Initialize a git repository and apply the patches
+    git init > /dev/null
+    git add .
+    git commit -m "Initial dummy commit" > /dev/null 2>&1
+
+    if ! git fetch "$REPO" master; then
+        echo "Error: Failed to fetch from repository"
+        cd ../../
+        return 1
+    fi
+
+    for COMMITHASH in "${COMMIT_HASHES[@]}"; do
+        if ! git cherry-pick -X theirs "$COMMITHASH"; then
+            echo "Error: Cherry-pick failed for commit $COMMITHASH"
+            cd ../../
+            return 1
+        fi
+    done
+
+    # Rebuild the APK
+    if ! java -jar ../../bin/apktool/apktool_2.10.0.jar b; then
+        echo "Error: Failed to rebuild APK"
+        cd ../../
+        return 1
+    fi
+
+    # Uncomment the following lines to copy the rebuilt APK back to the original location
+    # sudo cp "dist/$APKNAME" "$FULL_PATH"
+
     cd ../../
-    rm -rf workingdir
+
+    echo "APK patched and rebuilt successfully."
 }
 
 # Function to extract ROM
@@ -153,7 +201,7 @@ replace_props() {
     echo "NEWTEXT: $NEWTEXT"
 
     if [ "$OLDTEXT" != "$NEWTEXT" ]; then
-        sudo find mounts/vendor_stock mounts/system mounts/odm mounts/product -type f -name "*.prop" -exec sed -i "s|$OLDTEXT|$NEWTEXT|g" {} +
+        sudo find port -type f -name "*.prop" -exec sed -i "s|$OLDTEXT|$NEWTEXT|g" {} +
     fi
 }
 
