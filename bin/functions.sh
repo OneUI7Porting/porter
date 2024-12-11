@@ -82,9 +82,9 @@ patch_apk() {
         cd ../../
         return 1
     fi
-
+    pwd
     # Uncomment the following lines to copy the rebuilt APK back to the original location
-    cp "dist/$APKNAME" "$FULL_PATH"
+    cp "dist/$APKNAME" "../../$FULL_PATH"
 
     cd ../../
 
@@ -200,7 +200,7 @@ replace_props() {
 
     echo "Searching for new value for property: $PROP in $NEW_DIRECTORY"
 
-    local NEW_VALUE=$(grep --exclude=*.img -r "^$PROP=" "$NEW_DIRECTORY" | head -n 1 | cut -d'=' -f2)
+    local NEW_VALUE=$(sudo grep --exclude=*.img -r "^$PROP=" "$NEW_DIRECTORY" | head -n 1 | cut -d'=' -f2)
 
     if [[ -z "$NEW_VALUE" ]]; then
         echo "Error: New value for $PROP not found in $NEW_DIRECTORY"
@@ -533,6 +533,9 @@ cleanup() {
  sudo umount -f stock/vendor
  sudo umount -f stock/product
  sudo umount -f stock/odm
+ sudo umount -f port/vendor
+ rm -rf tmpout
+ rm -rf workdir
 }
 
 extract_erofs_images() {
@@ -820,4 +823,54 @@ patch_vendor_cmdline() {
 
     echo "Repacked image saved to $repacked_img"
     return 0
+}
+
+edit_floating_feature() {
+    local txtfile="$1"
+    local path="$2"
+
+    # Check if the text file exists
+    if [[ ! -f "$txtfile" ]]; then
+        echo "Error: Text file '$txtfile' not found."
+        return 1
+    fi
+
+    # Check if the path to floating_feature.xml exists
+    local xml_file="$path/floating_feature.xml"
+    if [[ ! -f "$xml_file" ]]; then
+        echo "Error: XML file '$xml_file' not found."
+        return 1
+    fi
+
+    # Read the text file line by line
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Skip empty lines or lines starting with # (comments)
+        if [[ -z "$line" || "$line" =~ ^# ]]; then
+            continue
+        fi
+
+        # Extract the tag name and value from the XML-like line
+        if [[ "$line" =~ \<([a-zA-Z0-9_]+)\>(.+)\</([a-zA-Z0-9_]+)\> ]]; then
+            local tag="${BASH_REMATCH[1]}"
+            local value="${BASH_REMATCH[2]}"
+
+            # Validate that the tag and value match
+            if [[ "$tag" != "${BASH_REMATCH[3]}" ]]; then
+                echo "Warning: Mismatched tag in line '$line'. Skipping."
+                continue
+            fi
+
+            # Use xmlstarlet to update the XML file
+            xmlstarlet ed -L -u "//$tag" -v "$value" "$xml_file"
+            if [[ $? -ne 0 ]]; then
+                echo "Error: Failed to update tag '$tag' in XML file."
+                return 1
+            fi
+            echo "Updated tag '$tag' with value '$value'."
+        else
+            echo "Warning: Invalid line '$line'. Skipping."
+        fi
+    done < "$txtfile"
+
+    echo "All updates completed."
 }
