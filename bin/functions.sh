@@ -1,5 +1,3 @@
-LOCALPATH=$(pwd)
-
 # Function to check if a package is installed
 check_packages() {
     for pkg in "$@"; do
@@ -130,7 +128,7 @@ extract_rom() {
 
     simg2img super.img super.raw
     rm -rf super.img
-    lpunpack -p system -p system_ext -p product -p odm -p vendor super.raw
+    "$LOCALPATH"/bin/lpunpack -p system -p system_ext -p product -p odm -p vendor -p system_dlkm -p vendor_dlkm -p super.raw
     rm -rf super.raw
     cd -
 
@@ -804,7 +802,6 @@ patch_vendor_cmdline() {
     kernel_offset=$(grep "kernel load address:" "$log_file" |cut -d ':' -f2)
     page_size=$(grep "page size:" "$log_file" |cut -d ':' -f2)
     header_version=$(grep "vendor boot image header version:" "$log_file" |cut -d ':' -f2)
-    echo $ramdisk_offset
 
     # Repack the boot image with the modified cmdline
     ./bin/mkbootimg/mkbootimg.py \
@@ -819,7 +816,7 @@ patch_vendor_cmdline() {
         --pagesize "$page_size" \
         --base 0x00000000 \
         --vendor_bootconfig "$output_dir/bootconfig" \
-        --vendor_boot "$repacked_img" || return 1
+        --vendor_boot "$repacked_img.img" || return 1
 
     echo "Repacked image saved to $repacked_img"
     return 0

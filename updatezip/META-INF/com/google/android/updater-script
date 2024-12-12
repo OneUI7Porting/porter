@@ -5,12 +5,19 @@ ui_print("");
 
 ui_print("Supported device detected");
 ui_print("This will take a while. Don't panic.");
-ui_print("Formatting cache");
+ui_print("Formatting cache");  # Capitalized for consistency
 format("ext4", "EMMC", "/dev/block/by-name/cache", "0", "/cache");
 show_progress(0.500000, 5);
 
-ui_print("Flashing super image");
+ui_print("Flashing images");
 package_extract_file("super.img", "/dev/block/by-name/super");
+package_extract_file("system.img", "/dev/block/by-name/system");
+package_extract_file("system_dlkm.img", "/dev/block/by-name/system_dlkm");
+package_extract_file("system_ext.img", "/dev/block/by-name/system_ext");
+package_extract_file("odm.img", "/dev/block/by-name/odm");
+package_extract_file("product.img", "/dev/block/by-name/product");
+package_extract_file("vendor.img", "/dev/block/by-name/vendor");
+package_extract_file("vendor_dlkm.img", "/dev/block/by-name/vendor_dlkm");
 ui_print("Flashing boot image");
 package_extract_file("boot.img", "/dev/block/by-name/boot");
 ui_print("Flashing init_boot image");
