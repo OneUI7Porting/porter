@@ -79,8 +79,6 @@ rm -rf port/system/system/priv-app/CIDManager
 
 ###################################### VENDOR PATCHING PART ######################################
 
-rm -rf stock/vendor/lib/*.so stock/vendor/lib/hw stock/vendor/lib/camera stock/vendor/lib/mediadrm stock/vendor/lib/mediacas stock/vendor/lib/rfsa stock/vendor/lib/soundfx stock/vendor/lib/egl stock/vendor/lib/vndk
-
 replace_in_file "stock/vendor" "build.prop" "ro.vendor.product.cpu.abilist=arm64-v8a,armeabi-v7a,armeabi" "ro.vendor.product.cpu.abilist=arm64-v8a"
 replace_in_file "stock/vendor" "build.prop" "ro.vendor.product.cpu.abilist32=armeabi-v7a,armeabi" "ro.vendor.product.cpu.abilist32="
 replace_in_file "stock/vendor" "build.prop" "ro.bionic.2nd_arch=arm" "ro.bionic.2nd_arch="
