@@ -33,7 +33,7 @@ mkdir -p out
 extract_rom "$BASEROMZIP" "stock"
 
 # # Extract Port ROM
- extract_rom "$PORTROMZIP" "port"
+extract_rom "$PORTROMZIP" "port"
 
 # # # Extract OneUI7 Update
 unpack_updatezip "ui7update"
@@ -74,8 +74,18 @@ replace_props "ro.product.product.model" "stock" "port"
 replace_props "ro.product.product.device" "stock" "port"
 replace_props "ro.product.product.name" "stock" "port"
 
+replace_props "ro.system.build.fingerprint" "stock" "port"
+replace_props "ro.system.build.id" "stock" "port"
+replace_props "ro.system_ext.build.id" "stock" "port"
+replace_props "ro.system_ext.build.fingerprint" "stock" "port"
+replace_props "ro.product.build.id" "stock" "port"
+replace_props "ro.product.build.fingerprint" "stock" "port"
+replace_props "ro.odm.build.id" "stock" "port"
+replace_props "ro.odm.build.fingerprint" "stock" "port"
+
 edit_floating_feature "patches/floating_feature.txt" "port/system/system/etc"
 rm -rf port/system/system/priv-app/CIDManager
+rm -rf port/system/system/priv-app/GalaxyBetaService
 
 ###################################### VENDOR PATCHING PART ######################################
 
