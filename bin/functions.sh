@@ -128,7 +128,7 @@ extract_rom() {
 
     simg2img super.img super.raw
     rm -rf super.img
-    "$LOCALPATH"/bin/lpunpack -p system -p system_ext -p product -p odm -p vendor -p system_dlkm -p vendor_dlkm -p super.raw
+    "$LOCALPATH"/bin/lpunpack -p system -p system_ext -p product -p odm -p vendor -p system_dlkm -p vendor_dlkm super.raw
     rm -rf super.raw
     cd -
 
@@ -756,7 +756,7 @@ set_device_model() {
             ;;
     esac
 
-    replace_in_file "$DIRECTORY" "$TARGETFILE" "Galaxy S24 Ultra" "$MODEL"
+    replace_in_file "$DIRECTORY" "$TARGETFILE" "Galaxy S24" "$MODEL"
 }
 
 patch_vendor_cmdline() {
