@@ -871,3 +871,58 @@ edit_floating_feature() {
 
     echo "All updates completed."
 }
+
+copy_files_from_list() {
+    local src_dir="$1"
+    local dest_dir="$2"
+    local file_list="$3"
+
+    # Check if arguments are provided
+    if [[ -z "$src_dir" || -z "$dest_dir" || -z "$file_list" ]]; then
+        echo "Usage: copy_files_from_list <source_directory> <destination_directory> <file_list>"
+        return 1
+    fi
+
+    # Check if source directory exists
+    if [[ ! -d "$src_dir" ]]; then
+        echo "Source directory does not exist: $src_dir"
+        return 1
+    fi
+
+    # Check if destination directory exists, create it if not
+    if [[ ! -d "$dest_dir" ]]; then
+        echo "Destination directory does not exist, creating it: $dest_dir"
+        mkdir -p "$dest_dir"
+    fi
+
+    # Check if file list exists
+    if [[ ! -f "$file_list" ]]; then
+        echo "File list does not exist: $file_list"
+        return 1
+    fi
+
+    # Copy the file list itself to the destination directory
+    local file_list_name=$(basename "$file_list")
+    cp "$file_list" "$dest_dir/$file_list_name"
+    echo "Copied file list: $file_list -> $dest_dir/$file_list_name"
+
+    # Process each file in the file list
+    while IFS= read -r file_path; do
+        # Construct full source and destination paths
+        local src_file="$src_dir/$file_path"
+        local dest_file="$dest_dir/$file_path"
+
+        # Check if the source file exists
+        if [[ -f "$src_file" ]]; then
+            # Create the destination directory structure if necessary
+            mkdir -p "$(dirname "$dest_file")"
+
+            # Copy the file, overriding if it already exists
+            cp "$src_file" "$dest_file"
+            echo "Copied: $src_file -> $dest_file"
+        else
+            echo "File not found in source directory: $src_file"
+        fi
+    done < "$file_list"
+}
+

@@ -10,7 +10,7 @@ VERSION=$4
 LOCALPATH=$(pwd)
 
 services_jar_patch_commit_hashes=("8362959" "bc64040")
-files_to_remove_vendor=("recovery-from-boot.p" "vendor.samsung.hardware.tlc.iccc@1.0" "vendor.samsung.hardware.tlc.kg" "vaultkeeperd" "vaultkeeper_common" "vendor.samsung.hardware.security.proca@2.0" "vendor.samsung.hardware.security.sem@1.0" "vendor.samsung.hardware.security.hdcp.keyprovisioning@1.0" "android.hardware.cas@1.2" "android.hardware.media.omx@1.0" "android.hardware.camera.provider@2.7-external" "cass")
+files_to_remove_vendor=("qwesd" "ATFWD-daemon" "recovery-from-boot.p" "vendor.samsung.hardware.tlc.iccc@1.0" "vendor.samsung.hardware.tlc.kg" "vaultkeeperd" "vaultkeeper_common" "vendor.samsung.hardware.security.proca@2.0" "vendor.samsung.hardware.security.sem@1.0" "vendor.samsung.hardware.security.hdcp.keyprovisioning@1.0" "android.hardware.cas@1.2" "android.hardware.media.omx@1.0" "android.hardware.camera.provider@2.7-external" "cass")
 vendor_cmdline_to_add=("t")
 
 source bin/functions.sh
@@ -63,6 +63,7 @@ set_device_model "$BASEROMZIP" "floating_feature.xml" "port"
 add_line_in_file "port/system" "floating_feature.xml" "<SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS>TRUE</SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS>"
 
 copy_file_to_same_path "stock/system_ext" "com.android.vndk.v$VNDK_VERSION.apex" "port/system_ext"
+copy_file_to_same_path "stock/system/system" "camera-feature.xml" "port/system/system"
 #patch_apk "services.jar" "${services_jar_patch_commit_hashes[@]}"
 replace_props "ro.product.system.model" "stock" "port"
 replace_props "ro.product.system.device" "stock" "port"
@@ -86,6 +87,10 @@ replace_props "ro.odm.build.fingerprint" "stock" "port"
 edit_floating_feature "patches/floating_feature.txt" "port/system/system/etc"
 rm -rf port/system/system/priv-app/CIDManager
 rm -rf port/system/system/priv-app/GalaxyBetaService
+
+copy_files_from_list "stock/system" "port/system" "public.libraries-camera.samsung.txt"
+copy_files_from_list "stock/system" "port/system" "public.libraries-arcsoft.txt"
+
 
 ###################################### VENDOR PATCHING PART ######################################
 
