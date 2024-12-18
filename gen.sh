@@ -140,8 +140,9 @@ mkfs.erofs -zlz4hc --ignore-mtime ./updatezip/odm.img port/odm/
 
 # ###################### ZIP THE ZIP #############################
 rm -rf out/*
-zip -r out/CSCSOCROM-DM1Q-$VERSION.zip updatezip/*
-# cd ..
+cd updatezip
+zip -r ../out/CSCSOCROM-DM1Q-$VERSION.zip updatezip/*
+cd ..
 #  ################# CLEANUP AND UNMOUNT #######################
 
 
