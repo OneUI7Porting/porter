@@ -1,0 +1,10 @@
+<!--
+    Input:
+        vendor/samsung/frameworks/interfaces/codecsolution/aidl/default/vendor.samsung.frameworks.codecsolution-manifest.xml
+-->
+<manifest version="8.0" type="framework">
+    <hal format="aidl">
+        <name>vendor.samsung.frameworks.codecsolution</name>
+        <fqname>ISehCodecSolution/default</fqname>
+    </hal>
+</manifest>

@@ -1,0 +1,10 @@
+<!--
+    Input:
+        system/netd/server/android.system.net.netd-service.xml
+-->
+<manifest version="8.0" type="framework">
+    <hal format="aidl">
+        <name>android.system.net.netd</name>
+        <fqname>INetd/default</fqname>
+    </hal>
+</manifest>
