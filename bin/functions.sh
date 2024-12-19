@@ -195,14 +195,19 @@ replace_props() {
     local PROP="$1"
     local NEW_DIRECTORY="$2"
     local DIRECTORY="$3"
+    local NEW_VALUE_OVERRIDE="$4"
 
-    echo "Searching for new value for property: $PROP in $NEW_DIRECTORY"
+    if [[ -n "$NEW_VALUE_OVERRIDE" ]]; then
+        echo "Using supplied new value for property: $PROP"
+        local NEW_VALUE="$NEW_VALUE_OVERRIDE"
+    else
+        echo "Searching for new value for property: $PROP in $NEW_DIRECTORY"
+        local NEW_VALUE=$(sudo grep --exclude=*.img -r "^$PROP=" "$NEW_DIRECTORY" | head -n 1 | cut -d'=' -f2)
 
-    local NEW_VALUE=$(sudo grep --exclude=*.img -r "^$PROP=" "$NEW_DIRECTORY" | head -n 1 | cut -d'=' -f2)
-
-    if [[ -z "$NEW_VALUE" ]]; then
-        echo "Error: New value for $PROP not found in $NEW_DIRECTORY"
-        return 1
+        if [[ -z "$NEW_VALUE" ]]; then
+            echo "Error: New value for $PROP not found in $NEW_DIRECTORY"
+            return 1
+        fi
     fi
 
     echo "Replacing $PROP with new value: $NEW_VALUE in $DIRECTORY"
@@ -211,6 +216,7 @@ replace_props() {
 
     echo "Property $PROP updated successfully in $DIRECTORY."
 }
+
 
 
 unpack_updatezip() {
