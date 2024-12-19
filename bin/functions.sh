@@ -824,7 +824,7 @@ patch_vendor_cmdline() {
         --pagesize "$page_size" \
         --base 0x00000000 \
         --vendor_bootconfig "$output_dir/bootconfig" \
-        --vendor_boot "$repacked_img.img" || return 1
+        --vendor_boot "$repacked_img" || return 1
 
     echo "Repacked image saved to $repacked_img"
     return 0
@@ -906,7 +906,7 @@ copy_files_from_list() {
     # Attempt to locate the file list if it is not found
     if [[ ! -f "$file_list" ]]; then
         local file_list_name=$(basename "$file_list")
-        local found_file_list=$(find "$src_dir" -type f -name "$file_list_name" | head -n 1 > /dev/null 2>&1 )
+        local found_file_list=$(find "$src_dir" -type f -name "$file_list_name" | head -n 1)
 
         if [[ -n "$found_file_list" ]]; then
             file_list="$found_file_list"
@@ -925,7 +925,7 @@ copy_files_from_list() {
     # Process each file in the file list
     while IFS= read -r file_path; do
         # Locate the file in the source directory
-        local found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1 > /dev/null 2>&1)
+        local found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
 
         if [[ -n "$found_file" ]]; then
             # Construct destination path
