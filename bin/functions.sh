@@ -310,10 +310,10 @@ apply_partition_patches() {
 
 replace_in_file() {
     # Parameters
-    search_folder="$1"   # Folder to search in
-    filename="$2"        # Name of the file to find
-    search_value="$3"    # Value to look for in the file
-    replacement_value="$4" # Value to replace with
+    search_folder="$1"        # Folder to search in
+    filename="$2"             # Name of the file to find
+    search_value="$3"         # Value to look for in the file
+    replacement_value="$4"    # Value to replace with
 
     # Check if the search folder exists
     if [ ! -d "$search_folder" ]; then
@@ -321,27 +321,30 @@ replace_in_file() {
         return 1
     fi
 
-    # Find the file in the directory and its subdirectories
-    file_path=$(find "$search_folder" -type f -name "$filename" | head -n 1)
+    # Find all files in the directory and its subdirectories
+    file_paths=$(find "$search_folder" -type f -name "$filename")
 
-    # Check if the file was found
-    if [ -z "$file_path" ]; then
+    # Check if any files were found
+    if [ -z "$file_paths" ]; then
         echo "Error: File $filename not found in $search_folder."
         return 1
     fi
 
-    # Perform the replacement in the found file
-    echo "Found $filename at $file_path. Replacing '$search_value' with '$replacement_value'..."
-    sed -i "s/$search_value/$replacement_value/g" "$file_path"
+    # Loop through each file and perform the replacement
+    for file_path in $file_paths; do
+        echo "Found $filename at $file_path. Replacing '$search_value' with '$replacement_value'..."
+        sed -i "s/$search_value/$replacement_value/g" "$file_path"
 
-    # Check if the replacement was successful
-    if [ $? -eq 0 ]; then
-        echo "Successfully replaced '$search_value' with '$replacement_value' in $file_path."
-    else
-        echo "Error: Failed to replace '$search_value' in $file_path."
-        return 1
-    fi
+        # Check if the replacement was successful
+        if [ $? -eq 0 ]; then
+            echo "Successfully replaced '$search_value' with '$replacement_value' in $file_path."
+        else
+            echo "Error: Failed to replace '$search_value' in $file_path."
+            return 1
+        fi
+    done
 }
+
 
 add_line_in_file() {
     # Parameters
@@ -904,7 +907,7 @@ copy_files_from_list() {
     # Attempt to locate the file list if it is not found
     if [[ ! -f "$file_list" ]]; then
         local file_list_name=$(basename "$file_list")
-        local found_file_list=$(find "$src_dir" -type f -name "$file_list_name" | head -n 1)
+        local found_file_list=$(find "$src_dir" -type f -name "$file_list_name" | head -n 1 > /dev/null 2>&1 )
 
         if [[ -n "$found_file_list" ]]; then
             file_list="$found_file_list"
@@ -923,7 +926,7 @@ copy_files_from_list() {
     # Process each file in the file list
     while IFS= read -r file_path; do
         # Locate the file in the source directory
-        local found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
+        local found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1 > /dev/null 2>&1)
 
         if [[ -n "$found_file" ]]; then
             # Construct destination path
