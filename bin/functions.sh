@@ -895,10 +895,18 @@ copy_files_from_list() {
         mkdir -p "$dest_dir"
     fi
 
-    # Check if file list exists
+    # Attempt to locate the file list if it is not found
     if [[ ! -f "$file_list" ]]; then
-        echo "File list does not exist: $file_list"
-        return 1
+        local file_list_name=$(basename "$file_list")
+        local found_file_list=$(find "$src_dir" -type f -name "$file_list_name" | head -n 1)
+
+        if [[ -n "$found_file_list" ]]; then
+            file_list="$found_file_list"
+            echo "File list found at: $file_list"
+        else
+            echo "File list does not exist: $file_list_name"
+            return 1
+        fi
     fi
 
     # Copy the file list itself to the destination directory
@@ -908,21 +916,24 @@ copy_files_from_list() {
 
     # Process each file in the file list
     while IFS= read -r file_path; do
-        # Construct full source and destination paths
-        local src_file="$src_dir/$file_path"
-        local dest_file="$dest_dir/$file_path"
+        # Locate the file in the source directory
+        local found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
 
-        # Check if the source file exists
-        if [[ -f "$src_file" ]]; then
+        if [[ -n "$found_file" ]]; then
+            # Construct destination path
+            local relative_path=$(realpath --relative-to="$src_dir" "$found_file")
+            local dest_file="$dest_dir/$relative_path"
+
             # Create the destination directory structure if necessary
             mkdir -p "$(dirname "$dest_file")"
 
             # Copy the file, overriding if it already exists
-            cp "$src_file" "$dest_file"
-            echo "Copied: $src_file -> $dest_file"
+            cp "$found_file" "$dest_file"
+            echo "Copied: $found_file -> $dest_file"
         else
-            echo "File not found in source directory: $src_file"
+            echo "File not found in source directory: $file_path"
         fi
     done < "$file_list"
 }
+
 
