@@ -744,10 +744,9 @@ append_file_contexts() {
 }
 
 set_device_model() {
-    local FILENAME=$1
     local TARGETFILE=$2
     local DIRECTORY=$3
-    local MODEL_NAME=$(ls "$FILENAME" | cut -d '_' -f 1)
+    local MODEL_NAME=$1
 
     case "$MODEL_NAME" in
         "SM-S911B")
