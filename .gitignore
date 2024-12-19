@@ -2,10 +2,11 @@ mounts/*
 port/*
 stock/*
 *.zip
-*test*
 unpack
 ui7update
 *.bin
 *.txt
 tmpout
+*key_*
+*test.py
 updatezip/*.img
