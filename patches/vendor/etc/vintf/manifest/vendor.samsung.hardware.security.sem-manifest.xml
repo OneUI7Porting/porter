@@ -1,0 +1,9 @@
+<manifest version="1.0" type="device">
+    <hal format="aidl" override="true">
+        <name>vendor.samsung.hardware.security.sem</name>
+        <interface>
+            <name>ISehSem</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+</manifest>

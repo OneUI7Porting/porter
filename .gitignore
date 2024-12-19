@@ -7,6 +7,5 @@ unpack
 ui7update
 *.bin
 *.txt
-manifest*
 tmpout
 updatezip/*.img

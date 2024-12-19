@@ -1,0 +1,11 @@
+<!--
+    Input:
+        hardware/interfaces/cas/1.2/default/android.hardware.cas@1.2-service.xml
+-->
+<manifest version="8.0" type="device">
+    <hal format="hidl">
+        <name>android.hardware.cas</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.2::IMediaCasService/default</fqname>
+    </hal>
+</manifest>
