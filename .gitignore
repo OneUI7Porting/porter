@@ -5,7 +5,7 @@ stock/*
 unpack
 ui7update
 *.bin
-*.txt
+Progress.txt
 tmpout
 *key_*
 *test.py
