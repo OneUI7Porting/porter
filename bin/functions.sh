@@ -932,8 +932,8 @@ copy_files_from_list() {
         local found_file
 
         if [[ "$use_provided_path" == "true" ]]; then
-            # Use the exact path provided in the file list
-            found_file="$file_path"
+            # Search for the file in the source directory
+            found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
         else
             found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
         fi
