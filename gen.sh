@@ -28,24 +28,24 @@ mkdir -p out
 
 
 
-# ####################### MOUNTING PART ##########################
-# Extract Base ROM
+####################### MOUNTING PART ##########################
+#Extract Base ROM
 extract_rom "$BASEROMZIP" "stock"
 
-# # Extract Port ROM
+#Extract Port ROM
 extract_rom "$PORTROMZIP" "port"
 
-# # # # Extract OneUI7 Update
+#Extract OneUI7 Update
 unpack_updatezip "ui7update"
 
-# # # # Update OneUI6 to 7
+#Update OneUI6 to 7
 updateImage "system" "ui7update" "port"
 updateImage "system_ext" "ui7update" "port"
 updateImage "product" "ui7update" "port"
 updateImage "odm" "ui7update" "port"
 updateImage "vendor" "ui7update" "port"
 
-#extract port rom and mount base rom
+#Extract port rom and mount base rom
 extract_erofs_images "port" "system.img"
 extract_erofs_images "port" "system_ext.img"
 extract_erofs_images "port" "odm.img"
@@ -91,7 +91,7 @@ replace_props "ro.build.official.developer" "stock" "port" "true"
 
 edit_floating_feature "patches/floating_feature.txt" "port/system/system/etc"
 
-# remove annoying popups
+#Remove annoying popups
 rm -rf port/system/system/priv-app/CIDManager
 rm -rf port/system/system/priv-app/GalaxyBetaService
 
@@ -101,8 +101,19 @@ rm -rf port/system/system/app/FBAppManager_NS
 rm -rf port/system/system/priv-app/FBServices
 rm -rf port/system/system/preload/Facebook_stub_preload
 
+#Camera app ?
+rm -rf patches/libsusedbycamera.txt
+extract_apk_libs "SamsungCamera.apk" "port/system/system/priv-app/" "patches/libsusedbycamera.txt"
+
 copy_files_from_list "stock/system" "port/system" "public.libraries-camera.samsung.txt"
 copy_files_from_list "stock/system" "port/system" "public.libraries-arcsoft.txt"
+copy_files_from_list "stock/system" "port/system" "patches/libsusedbycamera.txt" "true"
+
+#Dolby Atmos
+copy_file_to_same_path "stock/system/system" "libswdap_legacy.so" "port/system/system"
+copy_file_to_same_path "stock/system/system" "libswspatializer_legacy.so" "port/system/system"
+copy_file_to_same_path "stock/system/system/etc" "audio_effects.conf" "port/system/system/etc"
+copy_file_to_same_path "stock/system/system/etc" "audio_effects_common.conf" "port/system/system/etc"
 
 ###################################### VENDOR PATCHING PART ######################################
 

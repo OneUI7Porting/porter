@@ -884,10 +884,11 @@ copy_files_from_list() {
     local src_dir="$1"
     local dest_dir="$2"
     local file_list="$3"
+    local use_provided_path="$4"
 
     # Check if arguments are provided
     if [[ -z "$src_dir" || -z "$dest_dir" || -z "$file_list" ]]; then
-        echo "Usage: copy_files_from_list <source_directory> <destination_directory> <file_list>"
+        echo "Usage: copy_files_from_list <source_directory> <destination_directory> <file_list> [use_provided_path]"
         return 1
     fi
 
@@ -903,31 +904,41 @@ copy_files_from_list() {
         mkdir -p "$dest_dir"
     fi
 
-    # Attempt to locate the file list if it is not found
-    if [[ ! -f "$file_list" ]]; then
-        local file_list_name=$(basename "$file_list")
-        local found_file_list=$(find "$src_dir" -type f -name "$file_list_name" | head -n 1)
-
-        if [[ -n "$found_file_list" ]]; then
-            file_list="$found_file_list"
-            echo "File list found at: $file_list"
-        else
-            echo "File list does not exist: $file_list_name"
+    if [[ "$use_provided_path" == "true" ]]; then
+        # Use the file_list as provided, no search required
+        if [[ ! -f "$file_list" ]]; then
+            echo "File list does not exist: $file_list"
             return 1
         fi
-    fi
+    else
+        # Attempt to locate the file list if it is not found
+        if [[ ! -f "$file_list" ]]; then
+            local file_list_name=$(basename "$file_list")
+            local found_file_list=$(find "$src_dir" -type f -name "$file_list_name" | head -n 1)
 
-    # Copy the file list itself to the destination directory
-    local file_list_name=$(basename "$file_list")
-    cp "$file_list" "$dest_dir/$file_list_name"
-    echo "Copied file list: $file_list -> $dest_dir/$file_list_name"
+            if [[ -n "$found_file_list" ]]; then
+                file_list="$found_file_list"
+                echo "File list found at: $file_list"
+            else
+                echo "File list does not exist: $file_list_name"
+                return 1
+            fi
+        fi
+    fi
 
     # Process each file in the file list
     while IFS= read -r file_path; do
         # Locate the file in the source directory
-        local found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
+        local found_file
 
-        if [[ -n "$found_file" ]]; then
+        if [[ "$use_provided_path" == "true" ]]; then
+            # Use the exact path provided in the file list
+            found_file="$file_path"
+        else
+            found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
+        fi
+
+        if [[ -n "$found_file" && -f "$found_file" ]]; then
             # Construct destination path
             local relative_path=$(realpath --relative-to="$src_dir" "$found_file")
             local dest_file="$dest_dir/$relative_path"
@@ -943,5 +954,44 @@ copy_files_from_list() {
         fi
     done < "$file_list"
 }
+
+extract_apk_libs() {
+    local apkname="$1"  # APK name to search
+    local searchpath="$2"  # Path to search in
+    local outputfile="$3"  # Output file
+
+    # Find the APK file
+    local apkfile=$(find "$searchpath" -type f -name "$apkname" 2>/dev/null)
+    if [[ -z "$apkfile" ]]; then
+        echo "APK file not found in the specified path."
+        return 1
+    fi
+
+    # Create a temporary directory
+    local tmpdir=$(mktemp -d)
+
+    # Decompile the APK
+    rm -rf "$tmpdir"
+    java -jar bin/apktool/apktool_2.10.0.jar d "$apkfile" -o "$tmpdir" --quiet
+
+    # Locate AndroidManifest.xml
+    local manifestfile="$tmpdir/AndroidManifest.xml"
+    if [[ ! -f "$manifestfile" ]]; then
+        echo "AndroidManifest.xml not found in the decompiled APK."
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    # Extract library names from AndroidManifest.xml
+    grep -oP '<uses-native-library android:name="\K[^"]+(?=" android:required="[^"]*")' "$manifestfile" > "$outputfile"
+
+    # Clean up
+    rm -rf "$tmpdir"
+
+    echo "Library names have been extracted to $outputfile."
+    return 0
+}
+
+
 
 
