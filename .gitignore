@@ -6,6 +6,7 @@ unpack
 ui7update
 *.bin
 Progress.txt
+patches/libsusedbycamera.txt
 tmpout
 *key_*
 *test.py
