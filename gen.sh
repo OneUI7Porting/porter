@@ -47,44 +47,45 @@ updateImage "vendor" "ui7update" "port"
 
 #Extract port rom and mount base rom
 extract_erofs_images "port" "system.img"
-extract_erofs_images "port" "system_ext.img"
-extract_erofs_images "port" "odm.img"
-extract_erofs_images "port" "product.img"
-extract_erofs_images "stock" "vendor.img"
+ extract_erofs_images "port" "system_ext.img"
+ extract_erofs_images "port" "odm.img"
+ extract_erofs_images "port" "product.img"
+ extract_erofs_images "stock" "vendor.img"
 
 mount_images "stock"
 
 ###################################### SYSTEM PATCHING PART ######################################
 VNDK_VERSION=$(getprop ro.vndk.version vendor)
-DEVICE_MODEL=$(getprop ro.product.vendor.model)
+DEVICE_MODEL=$(getprop ro.product.vendor.model vendor)
 replace_selinux "port"
 rm -rf port/system/system/etc/vintf
 apply_partition_patches "port"
-set_device_model "$DEVICE_MODEL" "floating_feature.xml" "port"
+echo $DEVICE_MODEL
+set_device_model "$DEVICE_MODEL" "floating_feature.xml" "port/system"
 
 add_line_in_file "port/system" "floating_feature.xml" "<SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS>TRUE</SEC_FLOATING_FEATURE_BATTERY_SUPPORT_BSOH_SETTINGS>"
 
 copy_file_to_same_path "stock/system_ext" "com.android.vndk.v$VNDK_VERSION.apex" "port/system_ext"
 #copy_file_to_same_path "stock/system/system" "camera-feature.xml" "port/system/system"
 #patch_apk "services.jar" "${services_jar_patch_commit_hashes[@]}"
-replace_props "ro.product.system.model" "stock" "port"
-replace_props "ro.product.system.device" "stock" "port"
-replace_props "ro.product.system.name" "stock" "port"
-replace_props "ro.product.odm.model" "stock" "port"
-replace_props "ro.product.odm.device" "stock" "port"
-replace_props "ro.product.odm.name" "stock" "port"
-replace_props "ro.product.product.model" "stock" "port"
-replace_props "ro.product.product.device" "stock" "port"
-replace_props "ro.product.product.name" "stock" "port"
+replace_props "ro.product.system.model" "stock/system/system" "port/system/system"
+replace_props "ro.product.system.device" "stock/system/system" "port/system/system"
+replace_props "ro.product.system.name" "stock/system/system" "port/system/system"
+replace_props "ro.product.odm.model" "stock/odm" "port/odm"
+replace_props "ro.product.odm.device" "stock/odm" "port/odm"
+replace_props "ro.product.odm.name" "stock/odm" "port/odm"
+replace_props "ro.product.product.model" "stock/product" "port/product"
+replace_props "ro.product.product.device" "stock/product" "port/product"
+replace_props "ro.product.product.name" "stock/product" "port/product"
 
-replace_props "ro.system.build.fingerprint" "stock" "port"
-replace_props "ro.system.build.id" "stock" "port"
-replace_props "ro.system_ext.build.id" "stock" "port"
-replace_props "ro.system_ext.build.fingerprint" "stock" "port"
-replace_props "ro.product.build.id" "stock" "port"
-replace_props "ro.product.build.fingerprint" "stock" "port"
-replace_props "ro.odm.build.id" "stock" "port"
-replace_props "ro.odm.build.fingerprint" "stock" "port"
+replace_props "ro.system.build.fingerprint" "stock/system/system" "port/system/system"
+replace_props "ro.system.build.id" "stock/system/system" "port/system/system"
+replace_props "ro.system_ext.build.id" "stock/system_ext" "port/system_ext"
+replace_props "ro.system_ext.build.fingerprint" "stock/system_ext" "port/system_ext"
+replace_props "ro.product.build.id" "stock/product" "port/product"
+replace_props "ro.product.build.fingerprint" "stock/product" "port/product"
+replace_props "ro.odm.build.id" "stock/odm" "port/odm"
+replace_props "ro.odm.build.fingerprint" "stock/odm" "port/odm"
 
 replace_props "ro.build.official.release" "stock" "port" "false"
 replace_props "ro.build.official.developer" "stock" "port" "true"
@@ -104,6 +105,7 @@ rm -rf port/system/system/preload/Facebook_stub_preload
 #Camera app ?
 rm -rf patches/libsusedbycamera.txt
 extract_apk_libs "SamsungCamera.apk" "port/system/system/priv-app/" "patches/libsusedbycamera.txt"
+copy_file_to_same_path "stock/system/system" "vendor.samsung.hardware.snap-V2-ndk.so" "port/system/system"
 
 copy_files_from_list "stock/system" "port/system" "public.libraries-camera.samsung.txt"
 copy_files_from_list "stock/system" "port/system" "public.libraries-arcsoft.txt"
@@ -112,8 +114,23 @@ copy_files_from_list "stock/system" "port/system" "patches/libsusedbycamera.txt"
 #Dolby Atmos
 copy_file_to_same_path "stock/system/system" "libswdap_legacy.so" "port/system/system"
 copy_file_to_same_path "stock/system/system" "libswspatializer_legacy.so" "port/system/system"
-copy_file_to_same_path "stock/system/system/etc" "audio_effects.conf" "port/system/system/etc"
+copy_file_to_same_path "stock/system/system/etc" "audio_effects.xml" "port/system/system/etc"
 copy_file_to_same_path "stock/system/system/etc" "audio_effects_common.conf" "port/system/system/etc"
+
+###################################### PRODUCT PATCHING PART ######################################
+files_to_remove_product=("HotwordEnrollmentXGoogleEx4HEXAGON.apk" "HotwordEnrollmentOKGoogleEx4HEXAGON.apk" "framework-res__e3qxxx__auto_generated_rro_product.apk" "framework-res__phone__auto_generated_characteristics_rro.apk")
+remove_files_by_name "port/product" "${files_to_remove_product[@]}"
+copy_file_to_same_path "stock/product/overlay" "framework-res__auto_generated_rro_product.apk" "port/product/overlay"
+
+copy_file_to_same_path "stock/product/priv-app" "HotwordEnrollmentOKGoogleEx4HEXAGON.apk" "port/product/priv-app"
+copy_file_to_same_path "stock/product/priv-app" "HotwordEnrollmentXGoogleEx4HEXAGON.apk" "port/product/priv-app"
+
+
+###################################### SYSTEM_EXT PATCHING PART ######################################
+copy_file_to_same_path "stock/system_ext" "libpenguin.so" "port/system_ext"
+copy_file_to_same_path "stock/system_ext" "libpenguin_impl.so" "port/system_ext"
+
+
 
 ###################################### VENDOR PATCHING PART ######################################
 
@@ -130,6 +147,8 @@ remove_files_by_name "stock/vendor" "${files_to_remove_vendor[@]}"
 apply_partition_patches "stock" "vendor"
 remove_xml_hal_entry "stock/vendor/etc/vintf/manifest_kalama.xml" #too device specific
 
+copy_file_to_same_path "port/vendor" "vendor.samsung.hardware.snap-V2-ndk.so" "stock/vendor"
+copy_file_to_same_path "port/vendor" "libvui_dmgr_client.so" "stock/vendor"
 ###################################### VENDOR BOOT PATCHING PART ######################################
 patch_vendor_cmdline "stock/vendor_boot.img" "tmpout" "updatezip/vendor_boot.img" "${vendor_cmdline_to_add[@]}" 
 cp stock/boot.img updatezip/
@@ -141,10 +160,10 @@ cp patches/init_boot.img updatezip/
 # ########## CREATE EROFS IMAGES ################
 cd "$LOCALPATH"
 mkfs.erofs -zlz4hc --file-contexts=port/system/system/etc/selinux/plat_file_contexts --ignore-mtime ./updatezip/system.img port/system/
-mkfs.erofs -zlz4hc --file-contexts=port/system_ext/etc/selinux/system_ext_file_contexts --ignore-mtime ./updatezip/system_ext.img port/system_ext/
-mkfs.erofs -zlz4hc --file-contexts=stock/vendor/etc/selinux/vendor_file_contexts --ignore-mtime ./updatezip/vendor.img stock/vendor/
-mkfs.erofs -zlz4hc --file-contexts=port/product/etc/selinux/product_file_contexts --ignore-mtime ./updatezip/product.img port/product/
-mkfs.erofs -zlz4hc --ignore-mtime ./updatezip/odm.img port/odm/
+ mkfs.erofs -zlz4hc --file-contexts=port/system_ext/etc/selinux/system_ext_file_contexts --ignore-mtime ./updatezip/system_ext.img port/system_ext/
+ mkfs.erofs -zlz4hc --file-contexts=stock/vendor/etc/selinux/vendor_file_contexts --ignore-mtime ./updatezip/vendor.img stock/vendor/
+ mkfs.erofs -zlz4hc --file-contexts=port/product/etc/selinux/product_file_contexts --ignore-mtime ./updatezip/product.img port/product/
+ mkfs.erofs -zlz4hc --ignore-mtime ./updatezip/odm.img port/odm/
 
 # ######### CREATE SUPER IMAGE ##################
 #  bin/lpmake --metadata-size 65536\
