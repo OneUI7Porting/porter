@@ -382,9 +382,9 @@ add_line_in_file() {
 
 copy_file_to_same_path() {
     # Parameters
-    source_folder="$1"   # Folder to search in
-    filename="$2"        # Name of the file to find
-    destination_folder="$3" # Destination base folder
+    source_folder="$1"       # Folder to search in
+    filename="$2"            # Name of the file to find
+    destination_folder="$3"  # Destination base folder
 
     # Check if the source folder exists
     if [ ! -d "$source_folder" ]; then
@@ -398,39 +398,29 @@ copy_file_to_same_path() {
         return 1
     fi
 
-    # Find the file and get its full path
-    file_path=$(find "$source_folder" -type f -name "$filename" | head -n 1)
+    # Find all files matching the name and process them
+    find "$source_folder" -type f -name "$filename" | while read -r file_path; do
+        # Compute the relative path of the file
+        relative_path="${file_path#$source_folder/}"
 
-    # Check if the file was found
-    if [ -z "$file_path" ]; then
-        echo "Error: File $filename not found in $source_folder."
-        return 1
-    fi
+        # Compute the destination path
+        destination_path="$destination_folder/$relative_path"
 
-    # Compute the relative path of the file
-    relative_path="${file_path#$source_folder/}"
+        # Create the destination directory if it doesn't exist
+        destination_dir=$(dirname "$destination_path")
+        mkdir -p "$destination_dir"
 
-    # Compute the destination path
-    destination_path="$destination_folder/$relative_path"
+        # Copy the file
+        cp "$file_path" "$destination_path"
 
-    # Create the destination directory if it doesn't exist
-    destination_dir=$(dirname "$destination_path")
-    mkdir -p "$destination_dir"
-
-    # Copy the file
-    cp "$file_path" "$destination_path"
-
-    # Check if the copy was successful
-    if [ $? -eq 0 ]; then
-        echo "File copied successfully to $destination_path."
-    else
-        echo "Error: Failed to copy $filename to $destination_folder."
-        return 1
-    fi
+        # Check if the copy was successful
+        if [ $? -eq 0 ]; then
+            echo "File copied successfully to $destination_path."
+        else
+            echo "Error: Failed to copy $file_path to $destination_path."
+        fi
+    done
 }
-
-
-
 
 replace_selinux() {
     # Base paths for partitions
@@ -914,7 +904,7 @@ copy_files_from_list() {
         # Attempt to locate the file list if it is not found
         if [[ ! -f "$file_list" ]]; then
             local file_list_name=$(basename "$file_list")
-            local found_file_list=$(find "$src_dir" -type f -name "$file_list_name" | head -n 1)
+            local found_file_list=$(sudo find "$src_dir" -type f -name "$file_list_name" | head -n 1)
 
             if [[ -n "$found_file_list" ]]; then
                 file_list="$found_file_list"
@@ -933,9 +923,9 @@ copy_files_from_list() {
 
         if [[ "$use_provided_path" == "true" ]]; then
             # Search for the file in the source directory
-            found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
+            found_file=$(sudo find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
         else
-            found_file=$(find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
+            found_file=$(sudo find "$src_dir" -type f -name "$(basename "$file_path")" | head -n 1)
         fi
 
         if [[ -n "$found_file" && -f "$found_file" ]]; then
