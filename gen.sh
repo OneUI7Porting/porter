@@ -6,7 +6,9 @@ export PATH=$(pwd)/bin:$(pwd)/bin/apktool:$PATH
 BASEROMZIP=$1
 PORTROMZIP=$2
 UI7UPDATEZIP=$3
-VERSION=$4
+BETA2ZIP=$4
+BETA3ZIP=$5
+VERSION=$6
 LOCALPATH=$(pwd)
 
 services_jar_patch_commit_hashes=("8362959" "bc64040")
@@ -36,6 +38,28 @@ extract_rom "$BASEROMZIP" "stock"
 extract_rom "$PORTROMZIP" "port"
 
 #Extract OneUI7 Update
+unpack_updatezip "ui7update"
+
+#Update OneUI6 to 7
+updateImage "system" "ui7update" "port"
+updateImage "system_ext" "ui7update" "port"
+updateImage "product" "ui7update" "port"
+updateImage "odm" "ui7update" "port"
+updateImage "vendor" "ui7update" "port"
+
+#Extract OneUI7 Update 2
+UI7UPDATEZIP = BETA2ZIP
+unpack_updatezip "ui7update"
+
+#Update OneUI6 to 7
+updateImage "system" "ui7update" "port"
+updateImage "system_ext" "ui7update" "port"
+updateImage "product" "ui7update" "port"
+updateImage "odm" "ui7update" "port"
+updateImage "vendor" "ui7update" "port"
+
+#Extract OneUI7 Update 3
+UI7UPDATEZIP = BETA3ZIP
 unpack_updatezip "ui7update"
 
 #Update OneUI6 to 7
